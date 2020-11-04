@@ -2,10 +2,10 @@
 tileset = ground.png
 map =   XXX.XXXXXXXXXXX
         X.......X.X.X.X
-        X.>....X.X.h.XX
+        X.>....X.X...XX
         X...@.......X.X
         X......s...X.XX
-        X..............
+        X.h............
         XX.X.X.X...X.XX
         X...........X.X
         XX.X.X.X......X

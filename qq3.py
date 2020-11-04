@@ -20,7 +20,7 @@ class TileCache(object):
         self.width = width
         self.height = height or width
         self.cache = {}
-
+    
     def __getitem__(self, filename):
         """Return a table of tiles, load it from disk if needed."""
 
@@ -157,6 +157,7 @@ class Player(Sprite):
             except StopIteration:
                 self.animation = None
 
+
 class Level(object):
     """Load and store the map of the level, together with all the items."""
 
@@ -180,6 +181,8 @@ class Level(object):
             if len(section) == 1:
                 desc = dict(parser.items(section))
                 self.key[section] = desc
+                #print("(section: ",section," ,desc: ",desc,")" )
+        print("key['h']: ",self.key['h'])
         self.width = len(self.map[0])
         self.height = len(self.map)
         for y, line in enumerate(self.map):
@@ -291,12 +294,17 @@ class Game(object):
         self.level = level
         # Populate the game with the level's objects
         for pos, tile in level.items.items():
+            #print("tile['name']: ",tile["name"]=='house')
             if tile.get("player") in ('true', '1', 'yes', 'on'):
                 sprite = Player(pos)
                 self.player = sprite
-            else:
+            elif (tile["name"]=='house'):
+            #else:
+                print("tile['sprite']: ",tile["sprite"])
                 sprite = Sprite(pos, SPRITE_CACHE[tile["sprite"]])
                 self.house = sprite
+            else:
+                sprite = Sprite(pos, SPRITE_CACHE[tile["sprite"]])
             self.sprites.add(sprite)
             self.shadows.add(Shadow(sprite))
         # Render the level map
@@ -338,11 +346,14 @@ class Game(object):
             walk(3)
         elif pressed(pg.K_RIGHT):
             walk(1)
+        elif pressed(pg.K_SPACE):
+            self.walk_path = [ 0,1, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2 ]
+            print("Space")
         self.pressed_key = None
 
     def main(self):
         """Run the main loop."""
-        self.walk_path = [0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2 ]
+        self.walk_path = [ 0,1, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2 ]
         clock = pygame.time.Clock()
         # Draw the whole screen initially
         self.screen.blit(self.background, (0, 0))
@@ -372,7 +383,6 @@ class Game(object):
             pygame.display.update(dirty)
             # Wait for one tick of the game clock
 
-
             clock.tick(15)
             # Process pygame events
             for event in pygame.event.get():
@@ -384,23 +394,16 @@ class Game(object):
                     x,y = pygame.mouse.get_pos()
                     dx = ((x // MAP_TILE_WIDTH) - self.house.pos[0]) * MAP_TILE_WIDTH
                     dy = ((y // MAP_TILE_HEIGHT) - self.house.pos[1]) * MAP_TILE_HEIGHT
-                    # print(dx, dy)
+                    #print(self.house.pos[0], self.house.pos[1])
                     self.house.move(dx, dy)
 
                 #solve algorithm
 
-
-
-
-
-
-
-
-
 if __name__ == "__main__":
+    #print("Hello World\n")
     SPRITE_CACHE = TileCache()
     MAP_CACHE = TileCache(MAP_TILE_WIDTH, MAP_TILE_HEIGHT)
     TILE_CACHE = TileCache(32, 32)
     pygame.init()
-    pygame.display.set_mode((424, 320))
+    pygame.display.set_mode((424, 230))#424, 320
     Game().main()
