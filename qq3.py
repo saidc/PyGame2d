@@ -181,14 +181,14 @@ class Level(object):
             if len(section) == 1:
                 desc = dict(parser.items(section))
                 self.key[section] = desc
-                #print("(section: ",section," ,desc: ",desc,")" )
-        print("key['h']: ",self.key['h'])
+
         self.width = len(self.map[0])
         self.height = len(self.map)
         for y, line in enumerate(self.map):
             for x, c in enumerate(line):
                 if not self.is_wall(x, y) and 'sprite' in self.key[c]:
                     self.items[(x, y)] = self.key[c]
+                
 
     def render(self):
         """Draw the level on the surface."""
@@ -284,6 +284,7 @@ class Game(object):
         self.sprites = SortedUpdates()
         self.overlays = pygame.sprite.RenderUpdates()
         self.use_level(Level())
+        self.map = self.level.map
 
     def use_level(self, level):
         """Set the level as the current one."""
@@ -292,22 +293,22 @@ class Game(object):
         self.sprites = SortedUpdates()
         self.overlays = pygame.sprite.RenderUpdates()
         self.level = level
+        #print(level.items)
         # Populate the game with the level's objects
         for pos, tile in level.items.items():
-            #print("tile['name']: ",tile["name"]=='house')
+            
             if tile.get("player") in ('true', '1', 'yes', 'on'):
                 sprite = Player(pos)
                 self.player = sprite
-            elif (tile["name"]=='house'):
-            #else:
-                print("tile['sprite']: ",tile["sprite"])
+            elif (tile["name"]=='house'):# here identify the specific house sprite
                 sprite = Sprite(pos, SPRITE_CACHE[tile["sprite"]])
                 self.house = sprite
-            else:
+            else: # here identify others sprites
                 sprite = Sprite(pos, SPRITE_CACHE[tile["sprite"]])
-            self.sprites.add(sprite)
+            self.sprites.add(sprite) # here we add to the array of sprites
             self.shadows.add(Shadow(sprite))
         # Render the level map
+        
         self.background, overlays = self.level.render()
         # Add the overlays for the level map
         for (x, y), image in overlays.items():
@@ -337,7 +338,6 @@ class Game(object):
 
             return self.pressed_key == key or keys[key]
 
-
         if pressed(pg.K_UP):
             walk(0)
         elif pressed(pg.K_DOWN):
@@ -347,9 +347,19 @@ class Game(object):
         elif pressed(pg.K_RIGHT):
             walk(1)
         elif pressed(pg.K_SPACE):
+
             self.walk_path = [ 0,1, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2 ]
             print("Space")
         self.pressed_key = None
+    #here its a function to print the map, to make some proof
+    def printMap(self):
+        self.width = len(self.map[0])
+        self.height = len(self.map)
+        for y, line in enumerate(self.map):
+            Wline = ""
+            for x, c in enumerate(line):
+                Wline = Wline + c
+            print(Wline)
 
     def main(self):
         """Run the main loop."""
@@ -392,11 +402,31 @@ class Game(object):
                     self.pressed_key = event.key
                 elif event.type == pg.MOUSEBUTTONDOWN:
                     x,y = pygame.mouse.get_pos()
-                    dx = ((x // MAP_TILE_WIDTH) - self.house.pos[0]) * MAP_TILE_WIDTH
-                    dy = ((y // MAP_TILE_HEIGHT) - self.house.pos[1]) * MAP_TILE_HEIGHT
-                    #print(self.house.pos[0], self.house.pos[1])
-                    self.house.move(dx, dy)
+                    # identify if the click area is inside the wold
+                    if(not((x // MAP_TILE_WIDTH)>=15 or (y // MAP_TILE_HEIGHT)>=15)): 
+                        xpos,ypos = (x // MAP_TILE_WIDTH), (y // MAP_TILE_HEIGHT)
+                        if(self.map[ypos][xpos] == 'h'):
+                            print("house")
+                        elif(self.map[ypos][xpos] == 'X'):
+                            print("wall")
+                        elif(self.map[ypos][xpos] == 'b'):
+                            print("crate")
+                        elif(self.map[ypos][xpos] == '>'):
+                            print("stairs")
+                        elif(self.map[ypos][xpos] == '.'):
+                            print("floor")
+                        elif(self.map[ypos][xpos] == 's'):
+                            print("skeleton")
 
+                        # mouse doesnt click over a wall
+                        if(not(self.level.get_bool((x // MAP_TILE_WIDTH), (y // MAP_TILE_HEIGHT), 'wall'))):
+                            dx = ((x // MAP_TILE_WIDTH) - self.house.pos[0]) * MAP_TILE_WIDTH
+                            dy = ((y // MAP_TILE_HEIGHT) - self.house.pos[1]) * MAP_TILE_HEIGHT
+                            self.house.move(dx, dy)
+                            
+                        #print(self.map[ypos][xpos], " (",xpos,ypos,")")
+
+                    
                 #solve algorithm
 
 if __name__ == "__main__":
@@ -405,5 +435,5 @@ if __name__ == "__main__":
     MAP_CACHE = TileCache(MAP_TILE_WIDTH, MAP_TILE_HEIGHT)
     TILE_CACHE = TileCache(32, 32)
     pygame.init()
-    pygame.display.set_mode((424, 230))#424, 320
+    pygame.display.set_mode((424, 250))#424, 320
     Game().main()
