@@ -1,6 +1,7 @@
 
 import configparser
-
+#py -m pip install networkx #code to install in window console
+import networkx as nx
 import pygame
 import pygame.locals as pg
 
@@ -338,7 +339,7 @@ class Game(object):
 
             return self.pressed_key == key or keys[key]
 
-        if pressed(pg.K_UP):
+        if pressed(pg.K_UP): # UP:0 , DOWN:2 , LEFT:3 , RIGHT:1
             walk(0)
         elif pressed(pg.K_DOWN):
             walk(2)
@@ -360,15 +361,79 @@ class Game(object):
             for x, c in enumerate(line):
                 Wline = Wline + c
             print(Wline)
+    def cleanPreviousHousePosition(self):
+        newLine1 = ""
+        # clean the previous house position in the map
+        if(self.house.pos[0] == 0 and self.house.pos[1] == 0): # identify the first position
+            newLine1 = '.'+ self.map[self.house.pos[1]][1:len(self.map[self.house.pos[1]])]
+        elif(self.house.pos[0] == 14 and self.house.pos[1] == 14): #identify the last position
+            newLine1 = self.map[self.house.pos[1]][0:len(self.map[self.house.pos[1]])-1]+'.'
+        else:#in case of othe position
+            newLine1 = self.map[self.house.pos[1]][0:self.house.pos[0]]+'.'+ self.map[self.house.pos[1]][self.house.pos[0]+1:len(self.map[self.house.pos[1]])]
+        
+        self.map[self.house.pos[1]]= newLine1
+
+    def changeHousePos(self,xpos,ypos):
+        newLine2 = ""
+
+        # clean the previous house position in the map
+        self.cleanPreviousHousePosition()
+
+        # set the new house position in the map
+
+        if(xpos == 0 and ypos == 0): # identify the first position
+            newLine2 = 'h'+ self.map[ypos][1:len(self.map[ypos])]
+        elif(xpos == 14 and ypos == 14): #identify the last position
+            newLine2 = self.map[ypos][0:len(self.map[ypos])-1]+'h'
+        else:#in case of othe position
+            newLine2 = self.map[ypos][0:xpos]+'h'+ self.map[ypos][xpos+1:len(self.map[ypos])]
+        
+        self.map[ypos] = newLine2
+        
+        #asign to the sprite house the new position
+        self.house.pos=(xpos,ypos)
 
     def main(self):
         """Run the main loop."""
-        self.walk_path = [ 0,1, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2 ]
+        self.walk_path = []#[ 0,1, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2 ]
         clock = pygame.time.Clock()
         # Draw the whole screen initially
         self.screen.blit(self.background, (0, 0))
         self.overlays.draw(self.screen)
         pygame.display.flip()
+
+
+        # clean the previous house position in the map
+        self.cleanPreviousHousePosition()
+
+        # Remove the Player character from the map
+        xPlayer,yPlayer = self.player.pos[0],self.player.pos[1]
+        newLine0=""
+        #   print("player initPos: ",yPlayer ,xPlayer)
+        if(xPlayer == 0 and yPlayer == 0): # identify the first position
+            newLine0 = '.'+ self.map[yPlayer][1:len(self.map[yPlayer])]
+        elif(xPlayer == 14 and yPlayer == 14): #identify the last position
+            newLine0 = self.map[yPlayer][0:len(self.map[yPlayer])-1]+'.'
+        else:#in case of othe position
+            newLine0 = self.map[yPlayer][0:xPlayer]+'.'+ self.map[yPlayer][xPlayer+1:len(self.map[yPlayer])]
+        
+        self.map[yPlayer] = newLine0
+
+        #Generate Graph map
+        self.Graph = nx.Graph()
+        linePos = []
+        for y, line in enumerate(self.map):
+            for x, c in enumerate(line):
+                if(y < len(self.map)-1):# only ask for the previous of the last line
+                    if(x < len(line)-1):# only ask for the previous of the last caracter
+                        if(c == '.' and self.map[y][x+1] == '.'):# if the actual and the next position are floor
+                            linePos.append(((x,y),(x+1,y),1))
+                        if(c == '.' and self.map[y+1][x] == '.'):# if the actual and the bottom position are floor
+                            linePos.append(((x,y),(x,y+1),1))
+        self.Graph.add_weighted_edges_from(linePos)
+
+        self.changeHousePos(self.house.pos[0],self.house.pos[1])
+
         # The main game loop
         while not self.game_over:
             # Don't clear shadows and overlays, only sprites.
@@ -378,7 +443,8 @@ class Game(object):
             if self.player.animation is None:
                 self.control()
                 if len(self.walk_path) > 0:
-                    k = self.walk_path.pop()
+                    k = self.walk_path.pop(0)
+                    #print(self.walk_path)
                     self.control(k)
                 self.player.update()
             self.shadows.update()
@@ -413,24 +479,62 @@ class Game(object):
                             print("crate")
                         elif(self.map[ypos][xpos] == '>'):
                             print("stairs")
-                        elif(self.map[ypos][xpos] == '.'):
-                            print("floor")
+                        elif(self.map[ypos][xpos] == '.'): # only could add house over floors
+                            #print("floor")
+                            #change the house position in the map to a new position
+                            self.changeHousePos(xpos,ypos)
+                            
+                            if(not(self.player.pos[0]==self.house.pos[0] and self.player.pos[1]==self.house.pos[1])):
+                                #print("player and house are not at the same position")
+                                PlayerPos = ( self.player.pos[0] , self.player.pos[1] ) # player position
+                                HousePos  = ( self.house.pos[0]  , self.house.pos[1]  ) # house position
+                                NewPath = []
+                                if(self.Graph.has_node(PlayerPos)):
+                                    if(self.Graph.has_node(HousePos)):
+                                        if(nx.has_path(self.Graph,PlayerPos,HousePos)):
+                                            #print("Exist a path from Player Position to House Position")
+                                            print(str(PlayerPos)+","+str(HousePos))
+                                            NewPathPos = nx.dijkstra_path(self.Graph, PlayerPos, HousePos)
+                                            #print(NewPathPos)
+                                            NewPath=[]
+                                            for i, pos in enumerate(NewPathPos):
+                                                if(i<len(NewPathPos)-1):
+                                                    PA = pos
+                                                    PB = NewPathPos[i+1]
+                                                    # UP:0 , DOWN:2 , LEFT:3 , RIGHT:1
+                                                    if(  PA[0]+1 == PB[0] and PA[1]   == PB[1]): #RIGHT
+                                                        NewPath.append(1)
+                                                    elif(PA[0]-1 == PB[0] and PA[1]   == PB[1]): #LEFT
+                                                        NewPath.append(3)
+                                                    elif(PA[0]   == PB[0] and PA[1]-1 == PB[1]): #UP
+                                                        NewPath.append(0)
+                                                    elif(PA[0]   == PB[0] and PA[1]+1 == PB[1]): #DOWN
+                                                        NewPath.append(2)
+                                            self.walk_path = NewPath
+                                            #print(NewPath)
+                                            #self.printMap()
+                                        else:
+                                            print("No exist a path from Player Position to House Position")
+                                    else:
+                                        print("House position Node Doesnt exist")
+                                else:
+                                    print("Player position Node Doesnt exist")
+                            #self.printMap()
+                            #print("\n")
                         elif(self.map[ypos][xpos] == 's'):
                             print("skeleton")
-
+                        
+                        """
                         # mouse doesnt click over a wall
                         if(not(self.level.get_bool((x // MAP_TILE_WIDTH), (y // MAP_TILE_HEIGHT), 'wall'))):
                             dx = ((x // MAP_TILE_WIDTH) - self.house.pos[0]) * MAP_TILE_WIDTH
                             dy = ((y // MAP_TILE_HEIGHT) - self.house.pos[1]) * MAP_TILE_HEIGHT
                             self.house.move(dx, dy)
-                            
-                        #print(self.map[ypos][xpos], " (",xpos,ypos,")")
-
-                    
+                        """
                 #solve algorithm
 
 if __name__ == "__main__":
-    #print("Hello World\n")
+    
     SPRITE_CACHE = TileCache()
     MAP_CACHE = TileCache(MAP_TILE_WIDTH, MAP_TILE_HEIGHT)
     TILE_CACHE = TileCache(32, 32)
